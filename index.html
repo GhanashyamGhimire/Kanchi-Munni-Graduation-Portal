@@ -268,6 +268,7 @@
       .tease-sub{margin:0 0 20px;color:var(--ink-soft);font-weight:700;line-height:1.5;font-size:.98rem;}
       .tease-actions{display:flex;flex-direction:column;gap:10px;align-items:stretch;}
       .tease-actions .btn{justify-content:center;}
+      .tease-actions .btn:disabled{opacity:.72;cursor:default;transform:none;}
       .tease-foot{margin:16px 0 0;font-size:.83rem;color:var(--ink-soft);font-weight:700;line-height:1.45;}
       @media (prefers-reduced-motion: reduce){ .tease-card{animation:none;} }
 
@@ -281,6 +282,21 @@
       .finale-body{padding:22px 24px 26px;text-align:center;}
       .finale-body h2{margin:0 0 8px;font-size:clamp(1.6rem,4.4vw,2.3rem);font-weight:800;}
       .finale-body p{margin:0 auto 18px;color:var(--ink-soft);font-weight:600;line-height:1.55;max-width:36rem;}
+      .farewell{margin-top:28px;padding:0 18px;}
+      .farewell-card{
+        background:var(--card);border:2px solid var(--line);border-radius:28px;
+        box-shadow:var(--shadow);padding:28px 24px 30px;text-align:center;
+      }
+      .farewell-card .face{width:64px;height:64px;margin:0 auto 8px;}
+      .farewell-kicker{margin:0 0 4px;font-weight:900;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--red);}
+      .farewell-card h2{margin:0 0 12px;font-size:clamp(1.6rem,4.4vw,2.2rem);line-height:1.12;font-weight:800;color:var(--blue-deep);}
+      .farewell-card p{margin:0 auto 14px;color:var(--ink-soft);font-weight:600;line-height:1.6;max-width:36rem;}
+      .farewell-card p:last-child{margin-bottom:0;}
+      .farewell-miss{
+        background:var(--yellow-soft);border:2px solid var(--yellow);border-radius:18px;
+        padding:14px 18px;color:var(--ink) !important;font-weight:700 !important;
+      }
+      .farewell-sign{font-family:"Baloo 2",sans-serif;font-weight:700;color:var(--ink) !important;font-size:1.05rem;}
       footer{max-width:1120px;margin:0 auto;padding:40px 18px 56px;text-align:center;}
       footer .face{width:64px;height:64px;margin:0 auto 10px;}
       footer p{margin:6px auto;color:var(--ink-soft);font-weight:600;line-height:1.6;max-width:38rem;}
@@ -832,6 +848,18 @@
           </div>
         </div>
       </section>
+
+      <section class="farewell" aria-label="A farewell message for Kanchi Munni">
+        <div class="farewell-card">
+          <svg class="face" aria-hidden="true"><use href="#dora-face"></use></svg>
+          <p class="farewell-kicker">Psst — one last thing!</p>
+          <h2>Come back super sooooon, Kanchi Munni!</h2>
+          <p>You are welcome back in Singapore any, any, ANY time — no Anywhere Door needed! The moment an opportunity lands, grab it with both hands and come back super soon, okay? Doraemon has already saved you a spot.</p>
+          <p>And Doraemon is keeping his paws crossed extra, extra tight for that hospital lab tech job. If you get it — yaaaaay! — your dream comes true, you&rsquo;ll gain such valuable job experience, and then you could be back working right here in Singapore soon. Wouldn&rsquo;t that be the best plot twist ever?</p>
+          <p class="farewell-miss">Because honestly? Singapore misses you. Shizuka misses you. Nobita dadaaaa misses you. Nobita&rsquo;s camera misses you — it&rsquo;s just sitting there sighing. And the Merlion misses you too, most dramatically of all!</p>
+          <p class="farewell-sign">So this isn&rsquo;t goodbye-goodbye, okay? It&rsquo;s only see-you-soon. Come back sooooon — we&rsquo;ll all be right here waiting, cheering, and ready for round two of photos! 💙</p>
+        </div>
+      </section>
     </main>
 
     <footer>
@@ -852,8 +880,8 @@
         <div class="tease-actions">
           <button class="btn btn-primary" id="teaseGoBtn" type="button">Just kidding — download it for free! 😂</button>
           <button class="btn btn-ghost" id="teaseLaterBtn" type="button">Hmm, let me think about it…</button>
-          <button class="btn btn-ghost" type="button">Want this one for Instagram? Ask Dada first! 📸</button>
-          <button class="btn btn-ghost" type="button">Want this one printed out big-big? Ask Dada! 🖼️</button>
+          <button class="btn btn-ghost" id="teaseIgBtn" type="button">Want this one for Instagram? Ask Dada for the IG crop! 📸</button>
+          <button class="btn btn-ghost" id="teasePrintBtn" type="button">Want it in a photo album or big on the wall? Ask Dada for the print file! 🖼️</button>
         </div>
         <p class="tease-foot">Unlike a certain uni photo website, Dada charges nothing. This is purely for teasing purposes. 🤪</p>
       </div>
@@ -1211,6 +1239,131 @@
         var teaseSub = document.getElementById("teaseSub");
         var teaseGoBtn = document.getElementById("teaseGoBtn");
         var teaseLaterBtn = document.getElementById("teaseLaterBtn");
+        var teaseIgBtn = document.getElementById("teaseIgBtn");
+        var teasePrintBtn = document.getElementById("teasePrintBtn");
+        var REQUEST_URL = "https://script.google.com/macros/s/AKfycby6gFna0QxpNl9BxsQAIwrZr-nIzbUsYr2knLio-S10Fn7XLtXEM2jxNTI_utti7Y1lRg/exec";
+        var IG_LABEL = "Want this one for Instagram? Ask Dada for the IG crop! 📸";
+        var PRINT_LABEL = "Want it in a photo album or big on the wall? Ask Dada for the print file! 🖼️";
+        var NOTED_LABEL = "Noted! Dada will send it 💙";
+        var pendingPhotoLabel = "";
+        var sentRequests = {};
+        var reqInFlight = false;
+        var reqPending = null;
+        function photoLabelFrom(href, filename){
+          var src = (filename || "") + " " + (href || "");
+          var m = src.match(/-(\d+)\.jpg/);
+          if (m) return "-" + m[1];
+          try {
+            var p = lbList && lbList[lbIdx];
+            if (p && p.n) return "-" + p.n;
+          } catch (err) {}
+          return "";
+        }
+        function resetTeaseRequestButtons(){
+          if (!teaseIgBtn || !teasePrintBtn) return;
+          if (reqInFlight) return;
+          if (sentRequests[pendingPhotoLabel + "|IG crop"]){
+            teaseIgBtn.textContent = NOTED_LABEL;
+            teaseIgBtn.disabled = true;
+          } else {
+            teaseIgBtn.textContent = IG_LABEL;
+            teaseIgBtn.disabled = false;
+          }
+          if (sentRequests[pendingPhotoLabel + "|Print file"]){
+            teasePrintBtn.textContent = NOTED_LABEL;
+            teasePrintBtn.disabled = true;
+          } else {
+            teasePrintBtn.textContent = PRINT_LABEL;
+            teasePrintBtn.disabled = false;
+          }
+        }
+        function finishRequest(success){
+          if (!reqPending) return;
+          var pending = reqPending;
+          reqPending = null;
+          reqInFlight = false;
+          if (success){
+            sentRequests[pending.photoLabel + "|" + pending.requestType] = true;
+            /* Only update the button if the pop-up is still showing that photo */
+            if (pendingPhotoLabel === pending.photoLabel){
+              pending.btn.textContent = NOTED_LABEL;
+              pending.btn.disabled = true;
+            } else {
+              resetTeaseRequestButtons();
+            }
+          } else {
+            if (pendingPhotoLabel === pending.photoLabel){
+              pending.btn.textContent = pending.originalLabel;
+              pending.btn.disabled = false;
+            } else {
+              resetTeaseRequestButtons();
+            }
+          }
+        }
+        function sendPortalRequest(requestType, btn){
+          if (!btn || reqInFlight) return;
+          if (!pendingPhotoLabel) return;
+          var key = pendingPhotoLabel + "|" + requestType;
+          if (sentRequests[key]) return;
+          var originalLabel = (requestType === "IG crop") ? IG_LABEL : PRINT_LABEL;
+          var photoLabel = pendingPhotoLabel;
+          reqInFlight = true;
+          reqPending = { btn: btn, requestType: requestType, photoLabel: photoLabel, originalLabel: originalLabel };
+          btn.disabled = true;
+          btn.textContent = "Sending…";
+          /* Delivery: a direct fetch POST to the sheet receiver, NOT a
+             hidden-iframe form submit. Form submits are blocked outright
+             in some framed/sandboxed viewers (the Muse preview card
+             among them), and an iframe's load event fires even when the
+             request never reached Google — so the old code flipped the
+             button to "Noted!" while nothing arrived in the sheet.
+             fetch with mode:"no-cors" and a text/plain body is a CORS
+             "simple request" (no preflight); Apps Script runs doPost on
+             the initial POST, before its redirect, and the promise only
+             resolves once a response comes back — a blocked or failed
+             send rejects instead, so the button honestly reverts and
+             she can tap again. The receiver parses the plain JSON body
+             (verified live: it replies {"ok":true} to exactly this). */
+          var payload = JSON.stringify({ timestamp: new Date().toISOString(), photo: photoLabel, request: requestType });
+          var settled = false;
+          var timer = setTimeout(function(){
+            if (settled) return;
+            settled = true;
+            finishRequest(false);
+          }, 12000);
+          function done(ok){
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            finishRequest(ok);
+          }
+          if (window.fetch){
+            try {
+              window.fetch(REQUEST_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                body: payload,
+                redirect: "follow",
+                credentials: "omit",
+                keepalive: true
+              }).then(function(){ done(true); }, function(){ done(false); });
+            } catch (err) {
+              done(false);
+            }
+          } else if (navigator.sendBeacon){
+            try {
+              var queued = navigator.sendBeacon(REQUEST_URL, new Blob([payload], { type: "text/plain" }));
+              done(!!queued);
+            } catch (err) {
+              done(false);
+            }
+          } else {
+            done(false);
+          }
+        }
+        if (teaseIgBtn) teaseIgBtn.addEventListener("click", function(){ sendPortalRequest("IG crop", teaseIgBtn); });
+        if (teasePrintBtn) teasePrintBtn.addEventListener("click", function(){ sendPortalRequest("Print file", teasePrintBtn); });
         var TEASES = [
           { title:"Aiyoooooooo…", msg:"That'll be {price} for Dada to download this photo 🤪", sub:"Official pricing, straight from Dada's very official photo counter." },
           { title:"Hold on, hold on!", msg:"This masterpiece? That'll be {price}, please 😂", sub:"Your uni charges for convocation photos, so Dada thought he'd try it too… kidding!" },
@@ -1235,6 +1388,8 @@
         function showTease(href, filename){
           pendingDownloadHref = href || "";
           pendingDownloadName = filename || "";
+          pendingPhotoLabel = photoLabelFrom(pendingDownloadHref, pendingDownloadName);
+          resetTeaseRequestButtons();
           var t = TEASES[teaseIdx % TEASES.length];
           var price = TEASE_PRICES[teaseIdx % TEASE_PRICES.length];
           teaseIdx++;
